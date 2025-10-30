@@ -396,7 +396,33 @@
       function shareScore(s,t){ const text=`I scored ${s}/${t} on the World Capital Quiz! Can you beat me?`; if(navigator.share){ navigator.share({text}); } else { navigator.clipboard.writeText(text); alert('Copied to clipboard!'); } }
 
       // ===== Events =====
-      els.mode.addEventListener('change',()=>{ if(els.mode.value==='easy'){ els.input.blur(); } else { els.input.focus(); } renderSuggestions(); });
+      els.mode.addEventListener('change',()=>{
+        const m = els.mode.value;
+        // Toggle UI immediately when switching modes mid-question
+        if(m==='easy'){
+          // Show MCQ, hide typing UI
+          els.typeUI.hidden = true;
+          els.suggestions.hidden = true;
+          els.easyUI.hidden = false;
+          els.easyUI.innerHTML = '';
+          if(current){ renderChoices(); }
+          els.input.blur();
+        } else {
+          // Medium/Hard: hide and clear MCQ so buttons can't be clicked
+          els.easyUI.hidden = true;
+          els.easyUI.innerHTML = '';
+          els.typeUI.hidden = false;
+          // Reset typing box for the new mode
+          els.input.value = '';
+          if(m==='medium'){
+            els.input.focus();
+            renderSuggestions();
+          } else {
+            els.suggestions.hidden = true;
+            els.input.focus();
+          }
+        }
+      });
       els.mapMode.addEventListener('change',()=>{ updateMapState(); if(els.mapMode.value==='always'&&current){ showMap(current,false);} else { hideMap(); }});
       els.mapZoom.addEventListener('change', ()=>{ const z=parseInt(els.mapZoom.value||'3',10); if(FBACK.active && FBACK.setZoomScale){ FBACK.setZoomScale(z); } if(map && !FBACK.active){ try{ map.setZoom(clamp(z,2,8)); }catch{} } });
       els.input.addEventListener('input',()=>{ if(els.mode.value==='medium') renderSuggestions(); else els.suggestions.hidden=true; });
@@ -439,6 +465,22 @@
       try{ renderFallbackMap({country:'Testland',capCenter:[0,0],center:[0,0],area:1_000_000}); console.assert(FBACK.tx===0 && FBACK.ty===0,'Fallback resets pan on new question'); }catch(e){ console.error('Fallback init error', e);} hideMap();
       // --- Visibility test for suggestions overlay stacking (non-breaking)
       const saveMode=els.mode.value; els.mode.value='medium'; els.input.value='a'; renderSuggestions(); console.assert(els.suggestions.hidden===false,'Suggestions dropdown should be visible in medium mode'); els.suggestions.hidden=true; els.input.value=''; els.mode.value=saveMode;
+
+      // --- Mode-switch invariants (non-breaking): MCQ must clear when switching to typing modes
+      if(DATA.length){
+        const wasCur = current; const wasQ = queue.slice(); const wasMode = els.mode.value;
+        current = DATA[0];
+        els.mode.value='easy';
+        els.easyUI.hidden=false; renderChoices();
+        const hadButtons = els.easyUI.querySelectorAll('button.answer').length;
+        // switch to medium and dispatch change
+        els.mode.value='medium';
+        els.mode.dispatchEvent(new Event('change'));
+        const afterButtons = els.easyUI.querySelectorAll('button.answer').length;
+        console.assert(hadButtons>0 && (els.easyUI.hidden===true) && (afterButtons===0), 'Switching to Medium hides & clears MCQ answers');
+        // restore
+        current = wasCur; queue = wasQ; els.mode.value = wasMode; }
+
     });
   })();
   </script>
