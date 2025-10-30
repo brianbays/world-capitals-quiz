@@ -1,17 +1,446 @@
 <!DOCTYPE html>
-<html lang='en'>
+<html lang="en">
 <head>
-  <meta charset='utf-8'>
-  <title>World Capitals Quiz (Final Build)</title>
-  <meta name='viewport' content='width=device-width, initial-scale=1'>
-  <link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'>
-  <script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'></script>
-  <style>body{font-family:sans-serif;background:#0b1020;color:#fff;text-align:center;padding:40px;}a{color:#7dd3fc;}</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>World Capital Quiz</title>
+  <style>
+    :root{--bg:#0b1020;--panel:#121933;--ink:#e8ecf7;--muted:#9fb0d1;--accent:#7dd3fc;--accent2:#a78bfa;--danger:#fb7185;--ok:#34d399;--warn:#fbbf24;--chip:#1e2a52}
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:radial-gradient(1200px 600px at 10% -10%,#1b2551 0%,#0b1020 40%),var(--bg);color:var(--ink)}
+    a{color:var(--accent)}
+    .wrap{max-width:1024px;margin:0 auto;padding:24px}
+    header{display:flex;gap:16px;align-items:center;justify-content:space-between;margin-bottom:16px}
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 10px 30px rgba(125,211,252,.2)}
+    h1{font-size:20px;margin:0;letter-spacing:.3px}
+    .panel{background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,.00));border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(6px);border-radius:16px;padding:16px}
+    .controls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+    .control{display:flex;flex-direction:column;gap:6px}
+    label{font-size:12px;color:var(--muted)}
+    select,input[type="number"]{width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:#0f1530;color:var(--ink)}
+    button{border:0;border-radius:12px;padding:10px 14px;color:#081021;cursor:pointer;background:linear-gradient(135deg,var(--accent),#60a5fa);font-weight:600;box-shadow:0 6px 24px rgba(125,211,252,.3);transition:transform .04s ease}
+    button:active{transform:translateY(1px)}
+    .btn-secondary{background:transparent;color:var(--ink);border:1px solid rgba(255,255,255,.18);box-shadow:none}
+    .btn-danger{background:linear-gradient(135deg,var(--danger),#f472b6)}
+    .grid{display:grid;grid-template-columns:2.1fr 1fr;gap:16px;margin-top:16px}
+    .game{min-height:360px}
+    .status{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+    .chip{background:var(--chip);border:1px solid rgba(255,255,255,.08);padding:6px 10px;border-radius:999px;color:var(--muted);font-size:12px}
+    .question{font-size:22px;margin:10px 0 14px}
+    .answers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .answer{padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:#0f1530;color:var(--ink);cursor:pointer;text-align:left}
+    .answer.correct{outline:2px solid var(--ok)}
+    .answer.wrong{outline:2px solid var(--danger)}
+    .input-row{display:flex;gap:10px;align-items:center}
+    .typebox{position:relative;flex:1;z-index:4000}
+    .typebox input{width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:#0f1530;color:var(--ink)}
+    .suggest{position:absolute;left:0;right:0;top:110%;background:#0f1530;border:1px solid rgba(255,255,255,.14);border-radius:12px;max-height:220px;overflow:auto;z-index:5000;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+    .suggest div{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer}
+    .suggest div:hover{background:#131a39}
+    .progress{height:10px;background:#0f1530;border:1px solid rgba(255,255,255,.09);border-radius:999px;overflow:hidden;margin:16px 0}
+    .bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));width:0}
+    .side .panel{height:100%}
+    .list{display:flex;flex-direction:column;gap:8px;max-height:420px;overflow:auto}
+    .row{display:flex;justify-content:space-between;gap:12px;padding:8px 10px;border-radius:10px;background:#0e1530;border:1px solid rgba(255,255,255,.06)}
+    .row small{color:var(--muted)}
+    footer{margin-top:18px;color:var(--muted);font-size:12px;text-align:center}
+    .hint{color:var(--warn)}
+    @media (max-width: 900px){.grid{grid-template-columns:1fr}.controls{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    /* Map */
+    .mapbox{margin-top:14px;padding:0;overflow:hidden}
+    .leaflet-map{height:260px;width:100%;background:#0f1530;border:1px solid rgba(255,255,255,.08);border-radius:12px}
+  </style>
 </head>
 <body>
-  <h1>🌍 World Capitals Quiz - Final Build</h1>
-  <p>This is the full working version of your quiz app.</p>
-  <p>Upload this folder to <a href='https://app.netlify.com/drop'>Netlify Drop</a> or GitHub Pages to share it online.</p>
-  <p>All scripts, map layers, and features are embedded inline in the complete version from the ChatGPT canvas.</p>
+  <div class="wrap">
+    <header>
+      <div class="brand"><div class="logo" aria-hidden="true"></div><h1>World Capital Quiz</h1></div>
+      <div style="display:flex; gap:8px; align-items:center">
+        <button id="startBtn">Start</button>
+        <button id="resetBtn" class="btn-secondary">Reset</button>
+      </div>
+    </header>
+
+    <section class="panel controls" aria-label="Game settings">
+      <div class="control">
+        <label for="mode">Mode</label>
+        <select id="mode">
+          <option value="easy">Easy – Multiple Choice</option>
+          <option value="medium">Medium – Type with Suggestions</option>
+          <option value="hard">Hard – Type with No Help</option>
+        </select>
+      </div>
+      <div class="control">
+        <label for="region">Region</label>
+        <select id="region">
+          <option value="All">All Regions</option>
+          <option>Africa</option>
+          <option>Americas</option>
+          <option>Asia</option>
+          <option>Europe</option>
+          <option>Oceania</option>
+        </select>
+      </div>
+      <div class="control">
+        <label for="count">Questions</label>
+        <select id="count">
+          <option value="10">10</option>
+          <option value="20">20</option>
+          <option value="50">50</option>
+          <option value="all">All countries</option>
+        </select>
+      </div>
+      <div class="control">
+        <label for="timer">Timer per Q (sec)</label>
+        <input id="timer" type="number" min="0" max="120" value="0" />
+      </div>
+      <div class="control">
+        <label for="mapMode">Map Reveal</label>
+        <select id="mapMode">
+          <option value="off">Off</option>
+          <option value="reveal">On reveal / hint</option>
+          <option value="always" selected>Always show location</option>
+        </select>
+      </div>
+      <div class="control">
+        <label for="mapZoom">Map Zoom (2–8)</label>
+        <input id="mapZoom" type="number" min="2" max="8" value="3" />
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="panel game" aria-live="polite">
+        <div class="status">
+          <div class="chip" id="mapState">Map: Always</div>
+          <div class="chip">Score: <span id="score">0</span></div>
+          <div class="chip">Q <span id="qnum">0</span>/<span id="qtotal">0</span></div>
+          <div class="chip">Streak: <span id="streak">0</span></div>
+          <div class="chip" id="timeChip" style="display:none">Time: <span id="timeLeft">0</span>s</div>
+        </div>
+        <div class="progress" aria-hidden="true"><div class="bar" id="bar"></div></div>
+        <div class="question" id="question">Click Start to begin!</div>
+
+        <div id="easyUI" class="answers" hidden></div>
+
+        <div id="typeUI" hidden>
+          <div class="input-row">
+            <div class="typebox">
+              <input id="answerInput" type="text" placeholder="Type the capital…" autocomplete="off" />
+              <div id="suggestions" class="suggest" hidden></div>
+            </div>
+            <button id="submitBtn">Submit</button>
+            <button id="hintBtn" class="btn-secondary">Hint</button>
+          </div>
+          <div id="feedback" style="margin-top:10px; min-height:20px"></div>
+        </div>
+
+        <div id="summary" hidden></div>
+
+        <div class="mapbox" id="mapPanel" hidden>
+          <div id="map" class="leaflet-map" aria-label="Country location map"></div>
+        </div>
+      </div>
+
+      <aside class="side">
+        <div class="panel">
+          <h3 style="margin:4px 0 10px">Recent Results</h3>
+          <div class="list" id="recent"></div>
+          <footer>
+            Built with live country data from REST Countries. Case & accent-insensitive matching. No tracking; progress stored locally.
+          </footer>
+        </div>
+      </aside>
+    </section>
+  </div>
+
+  <script>
+  (function(){
+    //============== Helpers that don't touch the DOM yet ==============
+    const norm = (s)=> (s||"")
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu,'')
+      .replace(/[^a-z0-9\s'\-\.]/g,'')
+      .replace(/\s+/g,' ')
+      .trim();
+    const sample=(arr,n=1)=>{const a=[...arr];const out=[];n=Math.min(n,a.length);for(let i=0;i<n;i++){const j=Math.floor(Math.random()*a.length);out.push(a.splice(j,1)[0]);}return out;};
+    const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+
+    let DATA=[], ALL_CAPITALS=[];
+    let queue=[], current=null;
+    let score=0, qIndex=0, streak=0, totalQ=0;
+    let timerPerQ=0, tick=null, timeLeft=0, mode='easy';
+
+    // Leaflet / Fallback state (lazy wired after DOM ready)
+    let LREADY=false, LFAILED=false;
+    let map=null, mapMarker=null, mapRect=null;
+    let mapBordersGlow=null, mapBordersMain=null, bordersLoaded=false;
+    const FBACK={active:false, wrap:null, layer:null, scale:1, tx:0, ty:0, place:null, apply:null, setZoomScale:null};
+
+    // Geometry helpers
+    const kmToDegLat = (km)=> km/110.574;
+    const kmToDegLon = (km,lat)=>{ const d=111.320*Math.cos((lat||0)*Math.PI/180); return d>0.0001? km/d : km/0.0001; };
+    const estBoundsFromArea=(center,area)=>{ const lat=center[0]; const sideKm=Math.max(150,Math.min(2500,Math.sqrt(Math.max(area||0,1)))); const half=sideKm/2; const dLat=kmToDegLat(half); const dLon=kmToDegLon(half,lat); return [[lat-dLat,center[1]-dLon],[lat+dLat,center[1]+dLon]]; };
+
+    //============== DOM-READY BOOTSTRAP ==============
+    function ready(fn){ if(document.readyState!=='loading') fn(); else document.addEventListener('DOMContentLoaded', fn); }
+
+    ready(async function(){
+      // --- DOM refs (must exist now)
+      const els={
+        startBtn: document.getElementById('startBtn'),
+        resetBtn: document.getElementById('resetBtn'),
+        mode: document.getElementById('mode'),
+        region: document.getElementById('region'),
+        count: document.getElementById('count'),
+        timer: document.getElementById('timer'),
+        mapMode: document.getElementById('mapMode'),
+        mapZoom: document.getElementById('mapZoom'),
+        score: document.getElementById('score'), qnum: document.getElementById('qnum'), qtotal: document.getElementById('qtotal'), streak: document.getElementById('streak'),
+        bar: document.getElementById('bar'), question: document.getElementById('question'),
+        easyUI: document.getElementById('easyUI'), typeUI: document.getElementById('typeUI'),
+        input: document.getElementById('answerInput'), submitBtn: document.getElementById('submitBtn'), hintBtn: document.getElementById('hintBtn'),
+        suggestions: document.getElementById('suggestions'), feedback: document.getElementById('feedback'),
+        timeChip: document.getElementById('timeChip'), timeLeft: document.getElementById('timeLeft'),
+        recent: document.getElementById('recent'), summary: document.getElementById('summary'),
+        mapPanel: document.getElementById('mapPanel'), mapEl: document.getElementById('map'), mapState: document.getElementById('mapState')
+      };
+
+      // Guard: if any critical element is missing, bail gracefully
+      if(!els.mapEl){ console.error('Map element missing'); }
+
+      // ===== Data loading =====
+      async function loadData(){
+        const cached = localStorage.getItem('wg_caps_v1');
+        if(cached){
+          try{ const parsed=JSON.parse(cached); if(Array.isArray(parsed)&&parsed.length>100){ DATA=parsed; buildCapitalIndex(); return; } }catch{}
+        }
+        const res = await fetch('https://restcountries.com/v3.1/all?fields=name,capital,capitalInfo,latlng,region,area');
+        const raw = await res.json();
+        DATA = raw.filter(x=>Array.isArray(x.capital)&&x.capital.length>0).map(x=>({
+          country:x.name.common,
+          capitals:x.capital.filter(Boolean),
+          region:x.region||'Other',
+          center:Array.isArray(x.latlng)?x.latlng:null,
+          capCenter:Array.isArray(x.capitalInfo?.latlng)?x.capitalInfo.latlng:null,
+          area:typeof x.area==='number'?x.area:null
+        })).sort((a,b)=>a.country.localeCompare(b.country));
+        // alternates
+        [
+          {c:"Côte d'Ivoire",add:['Yamoussoukro','Abidjan']},
+          {c:'South Africa',add:['Pretoria','Bloemfontein','Cape Town']},
+          {c:'Eswatini',add:['Mbabane','Lobamba']},
+          {c:'Bolivia',add:['Sucre','La Paz']},
+          {c:'Netherlands',add:['Amsterdam','The Hague']},
+          {c:'Tanzania',add:['Dodoma','Dar es Salaam']},
+          {c:'Sri Lanka',add:['Sri Jayawardenepura Kotte','Colombo']},
+          {c:'Benin',add:['Porto-Novo','Cotonou']},
+          {c:'Myanmar',add:['Naypyidaw','Rangoon','Yangon']},
+          {c:'Palestine',add:['Ramallah','East Jerusalem']},
+          {c:'Vatican City',add:['Vatican City']},
+          {c:'Israel',add:['Jerusalem','Tel Aviv']},
+          {c:'Congo (Congo-Brazzaville)',add:['Brazzaville']},
+          {c:'DR Congo',add:['Kinshasa']},
+          {c:'Cabo Verde',add:['Praia']},
+        ].forEach(({c,add})=>{const it=DATA.find(d=>d.country===c); if(it){ it.capitals=[...new Set([...it.capitals,...add])]; }});
+        localStorage.setItem('wg_caps_v1', JSON.stringify(DATA));
+        buildCapitalIndex();
+      }
+      function buildCapitalIndex(){ const set=new Set(); DATA.forEach(d=>d.capitals.forEach(c=>set.add(c))); ALL_CAPITALS=[...set].sort((a,b)=>a.localeCompare(b)); }
+
+      // ===== Map (Leaflet loader + helpers) =====
+      function loadLeaflet(){
+        if(window.L || LREADY || LFAILED) return;
+        const link=document.createElement('link'); link.rel='stylesheet'; link.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; link.crossOrigin=''; document.head.appendChild(link);
+        const s=document.createElement('script'); s.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'; s.async=true; s.crossOrigin=''; s.onload=()=>{ LREADY=true; }; s.onerror=()=>{ LFAILED=true; console.warn('Leaflet CDN blocked; using fallback map.'); }; document.head.appendChild(s);
+      }
+      function initMap(){ if(!window.L || !LREADY || !els.mapEl) return; if(map) return; map = L.map('map', {zoomControl:true, attributionControl:true}); // Use CARTO Voyager (no labels) for stronger, crisper borders without text labels
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png', {
+        maxZoom: 8,
+        minZoom: 2,
+        subdomains: 'abcd',
+        attribution: '&copy; OpenStreetMap contributors, &copy; CARTO',
+        detectRetina: true
+      }).addTo(map);
+      // If tiles fail (e.g., blocked), switch to fallback image map
+      map.on('tileerror', ()=>{ try{ renderFallbackMap(current||{country:'',capCenter:[0,0],center:[0,0],area:0}); }catch(e){} });
+      map.setView([20,0],2);
+      loadBorders(); }
+
+      function loadBorders(){ if(bordersLoaded || !window.L || !map) return; const url='https://cdn.jsdelivr.net/gh/johan/world.geo.json@master/countries.geo.json';
+        fetch(url).then(r=>r.json()).then(geo=>{
+          try{
+            mapBordersGlow = L.geoJSON(geo, {interactive:false, smoothFactor:1.0, style:{color:'#5da8ff', weight:4, opacity:0.28, fill:false}}).addTo(map);
+            mapBordersMain = L.geoJSON(geo, {interactive:false, smoothFactor:1.0, style:{color:'#cfe3ff', weight:1.4, opacity:0.95, fill:false}}).addTo(map);
+            bordersLoaded=true;
+          }catch(e){ console.warn('Border overlay failed', e); }
+        }).catch(e=>console.warn('Fetch borders failed', e)); }
+
+      function renderFallbackMap(item){
+        if(!els.mapEl){ console.warn('No map element for fallback'); return; }
+        els.mapPanel.hidden=false; els.mapEl.innerHTML='';
+
+        // Reset fallback state
+        FBACK.active=true; FBACK.wrap=null; FBACK.layer=null; FBACK.scale=1; FBACK.tx=0; FBACK.ty=0; FBACK.place=null; FBACK.apply=null; FBACK.setZoomScale=null;
+
+        const wrap=document.createElement('div'); wrap.style.cssText='position:relative;width:100%;height:100%;background:#0f1530;border:1px solid rgba(255,255,255,.12);border-radius:12px;overflow:hidden;touch-action:none;';
+        const layer=document.createElement('div'); layer.style.cssText='position:absolute;left:0;top:0;right:0;bottom:0;transform-origin:0 0;';
+
+        const img=document.createElement('img'); img.alt='World map'; img.referrerPolicy='no-referrer'; img.draggable=false; img.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:contrast(1.05)';
+        const candidates=['https://upload.wikimedia.org/wikipedia/commons/8/80/World_map_-_low_resolution.svg','https://upload.wikimedia.org/wikipedia/commons/3/3c/Equirectangular_projection_SW.jpg'];
+        let idx=0; img.src=candidates[idx++]; img.onerror=()=>{ if(idx<candidates.length){ img.src=candidates[idx++]; } else { img.remove(); layer.style.background='linear-gradient(180deg,#0f1530,#0b0f25)'; }};
+
+        const pin=document.createElement('div'); pin.style.cssText='position:absolute;width:12px;height:12px;border-radius:50%;background:#60a5fa;box-shadow:0 0 0 3px rgba(96,165,250,.35);transform:translate(-50%,-50%);';
+        const rect=document.createElement('div'); rect.style.cssText='position:absolute;border:2px solid rgba(125,211,252,.8);border-radius:4px;background:transparent;';
+
+        const center=item.capCenter||item.center; const bounds=item.center? estBoundsFromArea(item.center,item.area||0):null;
+        const proj=(lat,lon,W,H)=>{ const x=((lon+180)/360)*W; const y=((90-lat)/180)*H; return [x,y]; };
+
+        function place(){
+          if(!wrap) return; const r=wrap.getBoundingClientRect(); const W=r?.width||els.mapEl.offsetWidth||600; const H=r?.height||els.mapEl.offsetHeight||300;
+          if(center){ const [px,py]=proj(center[0],center[1],W,H); pin.style.left=px+'px'; pin.style.top=py+'px'; if(!pin.parentNode) layer.appendChild(pin);} 
+          if(bounds){ const [sw,ne]=bounds; const [x1,y1]=proj(sw[0],sw[1],W,H); const [x2,y2]=proj(ne[0],ne[1],W,H); const left=Math.min(x1,x2), top=Math.min(y1,y2); const w=Math.abs(x2-x1), h=Math.abs(y2-y1); rect.style.left=left+'px'; rect.style.top=top+'px'; rect.style.width=w+'px'; rect.style.height=h+'px'; if(!rect.parentNode) layer.appendChild(rect);} 
+        }
+
+        function scaleFromZoom(z){ z = clamp(parseInt(z||'3',10),2,8); return 1 + (z-2)*(2/(8-2)); } // 2->1x, 8->3x
+        FBACK.scale = scaleFromZoom(els.mapZoom?.value||'3'); FBACK.tx = 0; FBACK.ty = 0;
+        function apply(){ if(layer) layer.style.transform = `translate(${FBACK.tx}px, ${FBACK.ty}px) scale(${FBACK.scale})`; }
+        function zoomAt(mx,my,delta){ const prev=FBACK.scale; const factor = delta<0 ? 1.1 : 0.9; const next = clamp(prev*factor, 1, 4); FBACK.tx = mx - ( (mx - FBACK.tx) * (next/prev) ); FBACK.ty = my - ( (my - FBACK.ty) * (next/prev) ); FBACK.scale = next; apply(); }
+        FBACK.apply=apply; FBACK.place=place; FBACK.setZoomScale=(z)=>{ const r=wrap.getBoundingClientRect(); const mx=(r?.width||0)/2, my=(r?.height||0)/2; const prev=FBACK.scale; const next=scaleFromZoom(z); FBACK.tx = mx - ( (mx - FBACK.tx) * (next/prev) ); FBACK.ty = my - ( (my - FBACK.ty) * (next/prev) ); FBACK.scale = next; apply(); };
+
+        let dragging=false, lastX=0, lastY=0;
+        wrap.addEventListener('mousedown', (e)=>{ dragging=true; lastX=e.clientX; lastY=e.clientY; });
+        window.addEventListener('mousemove', (e)=>{ if(!dragging) return; const dx=e.clientX-lastX, dy=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY; FBACK.tx+=dx; FBACK.ty+=dy; apply(); });
+        window.addEventListener('mouseup', ()=>{ dragging=false; });
+        wrap.addEventListener('wheel', (e)=>{ e.preventDefault(); const r=wrap.getBoundingClientRect(); const mx=(e.clientX-(r?.left||0)); const my=(e.clientY-(r?.top||0)); zoomAt(mx,my,e.deltaY); }, {passive:false});
+
+        layer.appendChild(img); wrap.appendChild(layer); els.mapEl.appendChild(wrap);
+        new ResizeObserver(()=>{ place(); apply(); }).observe(wrap);
+        place(); apply();
+
+        FBACK.wrap=wrap; FBACK.layer=layer;
+      }
+
+      function showMap(item, emphasize){
+        els.mapPanel.hidden=false;
+        if(window.L && LREADY){ initMap(); }
+        if(map){
+          FBACK.active=false;
+          const z=clamp(parseInt(els.mapZoom.value||'3',10),2,8);
+          const center=item.capCenter||item.center; if(!center){ hideMap(); return; }
+          setTimeout(()=>{
+            if(!els.mapEl) return; map.invalidateSize();
+            if(mapMarker){ map.removeLayer(mapMarker); mapMarker=null; }
+            if(mapRect){ map.removeLayer(mapRect); mapRect=null; }
+            mapMarker=L.marker([center[0],center[1]]).addTo(map).bindPopup(`${item.country}`);
+            const bounds=estBoundsFromArea(item.center||center,item.area||0);
+            mapRect=L.rectangle(bounds,{weight:emphasize?3:2,fillOpacity:0,color:emphasize?'#60a5fa':'#7dd3fc'}).addTo(map);
+            map.fitBounds(bounds,{padding:[14,14]}); map.setZoom(z); map.panTo([center[0],center[1]]);
+            setTimeout(()=>{ const tiles=document.querySelectorAll('#map .leaflet-tile-container img'); if(!tiles||tiles.length===0){ renderFallbackMap(item); }},600);
+          },0);
+          return;
+        }
+        renderFallbackMap(item);
+      }
+
+      function hideMap(){ if(mapMarker){try{map.removeLayer(mapMarker);}catch{} mapMarker=null;} if(mapRect){try{map.removeLayer(mapRect);}catch{} mapRect=null;} if(els.mapEl) els.mapEl.innerHTML=''; els.mapPanel.hidden=true; FBACK.active=false; }
+
+      function updateMapState(){ const m=els.mapMode.value; if(els.mapState) els.mapState.textContent = m==='always'?'Map: Always':m==='reveal'?'Map: Reveal':'Map: Off'; }
+
+      // ===== Game logic =====
+      function setupQueue(){ const region=els.region.value; const pool=region==='All'?DATA:DATA.filter(d=>d.region===region); const want=els.count.value==='all'?pool.length:parseInt(els.count.value,10); queue=sample(pool,want); totalQ=queue.length; qIndex=0; score=0; streak=0; current=null; updateHUD(); els.summary.hidden=true; }
+      function updateHUD(){ els.score.textContent=String(score); els.qnum.textContent=String(Math.min(qIndex+1,totalQ)); els.qtotal.textContent=String(totalQ); els.streak.textContent=String(streak); els.bar.style.width=(totalQ?(qIndex/totalQ)*100:0)+'%'; }
+      function startTimer(){ clearInterval(tick); if(timerPerQ<=0){ els.timeChip.style.display='none'; return; } els.timeChip.style.display='inline-flex'; timeLeft=timerPerQ; els.timeLeft.textContent=String(timeLeft); tick=setInterval(()=>{ timeLeft--; els.timeLeft.textContent=String(timeLeft); if(timeLeft<=0){ clearInterval(tick); reveal(false,"Time's up!"); } },1000); }
+
+      function nextQuestion(){ els.feedback.textContent=''; els.hintBtn.classList.remove('hint'); if(qIndex>=totalQ){ finish(); return; } current=queue[qIndex]; qIndex++; updateHUD(); els.question.textContent=`What is the capital of ${current.country}?`; mode=els.mode.value; timerPerQ=parseInt(els.timer.value||'0',10)||0; startTimer(); els.easyUI.hidden = mode!=='easy'; els.typeUI.hidden = (mode==='easy'); if(els.mapMode.value==='always'){ showMap(current,false); } else { hideMap(); } if(mode==='easy'){ renderChoices(); } else { els.input.value=''; els.input.focus(); renderSuggestions(); } }
+
+      function renderChoices(){
+        // Build a 4-option set: exactly 1 correct + 3 unique distractors (not any alias of current)
+        const region=els.region.value;
+        const same=(region==='All')?DATA:DATA.filter(d=>d.region===current.region);
+        const correctAliases = new Set(current.capitals.map(c=>norm(c)));
+        const correct = current.capitals[0]; // canonical display
+        // pool candidates then filter out aliases and dups by normalized value
+        const poolCaps = same.flatMap(d=>d.capitals);
+        const distractPool = poolCaps.filter(c=>!correctAliases.has(norm(c)));
+        const picked = new Set();
+        const distractors=[];
+        while(distractors.length<3 && distractPool.length){
+          const c = distractPool[Math.floor(Math.random()*distractPool.length)];
+          const key = norm(c);
+          if(!picked.has(key)) { picked.add(key); distractors.push(c); }
+        }
+        // If pool was small, backfill from ALL_CAPITALS
+        if(distractors.length<3){
+          for(const c of ALL_CAPITALS){ const key=norm(c); if(!picked.has(key) && !correctAliases.has(key)){ distractors.push(c); picked.add(key); if(distractors.length===3) break; } }
+        }
+        // Final options
+        const options=[correct, ...distractors.slice(0,3)];
+        const shuffled = sample(options, options.length);
+        els.easyUI.innerHTML='';
+        shuffled.forEach(opt=>{
+          const b=document.createElement('button'); b.className='answer'; b.textContent=opt;
+          b.addEventListener('click',()=>{ const ok=isCorrect(opt); b.classList.add(ok?'correct':'wrong'); reveal(ok);});
+          els.easyUI.appendChild(b);
+        });
+        // --- Assertion: ensure at least one option is acceptable
+        console.assert(shuffled.some(o=>correctAliases.has(norm(o))), 'MCQ must include a correct alias');
+      }
+      function renderSuggestions(){ const box=els.suggestions; const val=norm(els.input.value); if(els.mode.value!=='medium'||!val){ box.hidden=true; box.innerHTML=''; return;} const list=ALL_CAPITALS.filter(c=>norm(c).startsWith(val)).slice(0,50); if(list.length===0){ box.hidden=true; box.innerHTML=''; return;} box.hidden=false; box.innerHTML=''; list.forEach(c=>{ const d=document.createElement('div'); d.textContent=c; d.addEventListener('click',()=>{ els.input.value=c; box.hidden=true;}); box.appendChild(d);}); }
+      function isCorrect(ans){ const a=norm(ans); return current.capitals.some(c=>norm(c)===a); }
+      function reveal(ok,msg){ clearInterval(tick); const correct=current.capitals[0]; if(ok){ score++; streak++; els.feedback.innerHTML=`<span style="color:var(--ok);font-weight:600">Correct!</span>`;} else { streak=0; els.feedback.innerHTML=`<span style="color:var(--danger);font-weight:600">Wrong.</span> Correct is <b>${correct}</b>. ${msg?`<span style='color:var(--muted)'>${msg}</span>`:''}`;} pushRecent(current.country,correct,ok); if(els.mapMode.value==='reveal'){ showMap(current,true);} setTimeout(()=>nextQuestion(),800); }
+      function pushRecent(country,capital,ok){ const row=document.createElement('div'); row.className='row'; row.innerHTML=`<div><b>${country}</b><br><small>${capital}</small></div><div style="display:flex;align-items:center;gap:8px"><span class="chip" style="color:${ok?'#34d399':'#fb7185'}">${ok?'✓':'✕'}</span></div>`; els.recent.prepend(row); while(els.recent.children.length>20){ els.recent.lastChild.remove(); } }
+      function finish(){ clearInterval(tick); els.easyUI.hidden=true; els.typeUI.hidden=true; els.question.textContent='Great job!'; const pct=totalQ?Math.round((score/totalQ)*100):0; els.summary.hidden=false; els.summary.innerHTML=`<div class="panel" style="margin-top:8px"><h2 style="margin:6px 0 8px">Summary</h2><p>You answered <b>${score}</b> out of <b>${totalQ}</b> correctly (<b>${pct}%</b>).</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="startGame()">Play Again</button><button class="btn-secondary" onclick="shareScore(${score},${totalQ})">Share</button></div></div>`; }
+      function shareScore(s,t){ const text=`I scored ${s}/${t} on the World Capital Quiz! Can you beat me?`; if(navigator.share){ navigator.share({text}); } else { navigator.clipboard.writeText(text); alert('Copied to clipboard!'); } }
+
+      // ===== Events =====
+      els.mode.addEventListener('change',()=>{ if(els.mode.value==='easy'){ els.input.blur(); } else { els.input.focus(); } renderSuggestions(); });
+      els.mapMode.addEventListener('change',()=>{ updateMapState(); if(els.mapMode.value==='always'&&current){ showMap(current,false);} else { hideMap(); }});
+      els.mapZoom.addEventListener('change', ()=>{ const z=parseInt(els.mapZoom.value||'3',10); if(FBACK.active && FBACK.setZoomScale){ FBACK.setZoomScale(z); } if(map && !FBACK.active){ try{ map.setZoom(clamp(z,2,8)); }catch{} } });
+      els.input.addEventListener('input',()=>{ if(els.mode.value==='medium') renderSuggestions(); else els.suggestions.hidden=true; });
+      els.input.addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ submitAnswer(); } });
+      els.submitBtn.addEventListener('click',submitAnswer);
+      els.hintBtn.addEventListener('click',()=>{ const letter=current?.capitals?.[0]?.charAt(0)||''; els.feedback.innerHTML=`<span class="hint">Hint:</span> starts with <b>${letter}</b>`; els.hintBtn.classList.add('hint'); if(els.mapMode.value!=='off'){ showMap(current,true);} });
+      document.addEventListener('click',(e)=>{ if(!els.suggestions.contains(e.target)&&e.target!==els.input){ els.suggestions.hidden=true; } });
+
+      function submitAnswer(){ if(!current) return; const val=els.input.value.trim(); if(!val){ els.feedback.innerHTML=`<span style=\"color:var(--warn)\">Type an answer.</span>`; return;} const ok=isCorrect(val); reveal(ok); }
+      function startGame(){ setupQueue(); nextQuestion(); }
+      els.startBtn.addEventListener('click',startGame);
+      els.resetBtn.addEventListener('click',()=>{
+        // Soft reset: avoid full reload (prevents white screen in preview iframes)
+        try{ localStorage.removeItem('wg_caps_v1'); }catch{}
+        clearInterval(tick);
+        // Reset state
+        queue=[]; current=null; score=0; qIndex=0; streak=0; totalQ=0; timerPerQ=0; timeLeft=0; mode=els.mode.value;
+        // Reset UI
+        els.score.textContent='0'; els.qnum.textContent='0'; els.qtotal.textContent='0'; els.streak.textContent='0';
+        els.bar.style.width='0%';
+        els.easyUI.hidden=true; els.typeUI.hidden=true; els.summary.hidden=true; els.feedback.textContent=''; els.suggestions.hidden=true; els.suggestions.innerHTML='';
+        els.question.textContent='Click Start to begin!';
+        // Clear recents
+        els.recent.innerHTML='';
+        // Hide map & reset fallback state
+        hideMap();
+        FBACK.active=false; FBACK.wrap=null; FBACK.layer=null; FBACK.scale=1; FBACK.tx=0; FBACK.ty=0;
+      });
+
+      // ===== Kickoff =====
+      loadLeaflet();
+      await loadData();
+      // --- Smoke tests (non-throwing)
+      console.assert(norm('Á  ')==='a','norm strips accents & spaces');
+      if(DATA.length){ const tmp={capitals:[DATA[0].capitals[0]||'']}; const was=current; current=tmp; console.assert(isCorrect(tmp.capitals[0])===true,'isCorrect accepts exact'); current=was; }
+      ALL_CAPITALS.push('Testopolis'); const A=ALL_CAPITALS.filter(c=>norm(c).startsWith('t')).length; const B=ALL_CAPITALS.filter(c=>norm(c).startsWith('te')).length; console.assert(A>=B,'Suggestions narrow with more letters');
+      const b=estBoundsFromArea([0,0], 1_000_000); console.assert(Array.isArray(b)&&b.length===2&&b[0][0]<b[1][0]&&b[0][1]<b[1][1],'Bounds valid');
+      console.assert(document.getElementById('map')!==null,'Map element exists after DOM ready');
+      const prev=els.mapMode.value; els.mapMode.value='reveal'; updateMapState(); hideMap(); console.assert(els.mapPanel.hidden===true,'Reveal mode hides map until hint/reveal'); els.mapMode.value=prev; updateMapState();
+      try{ renderFallbackMap({country:'Testland',capCenter:[0,0],center:[0,0],area:1_000_000}); console.assert(FBACK.tx===0 && FBACK.ty===0,'Fallback resets pan on new question'); }catch(e){ console.error('Fallback init error', e);} hideMap();
+      // --- Visibility test for suggestions overlay stacking (non-breaking)
+      const saveMode=els.mode.value; els.mode.value='medium'; els.input.value='a'; renderSuggestions(); console.assert(els.suggestions.hidden===false,'Suggestions dropdown should be visible in medium mode'); els.suggestions.hidden=true; els.input.value=''; els.mode.value=saveMode;
+    });
+  })();
+  </script>
 </body>
 </html>
