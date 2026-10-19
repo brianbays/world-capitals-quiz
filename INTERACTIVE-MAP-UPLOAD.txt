@@ -1,0 +1,16 @@
+Upload these files to your GitHub world-capitals-quiz folder:
+- index.html (replace)
+- countries.json (replace; includes matched capital coordinates)
+- capital-locations.json (new; source links for all 245 locations)
+- CAPITAL-COORDINATES-LICENSE.txt (new; GeoNames attribution)
+Keep the existing answer-key.html, DATA-LICENSE.txt and MAP-LICENSE.txt.
+
+The map and its coordinate data remain embedded in index.html. No API key, external script, or build step is needed.
+Mouse: drag to pan; wheel to zoom toward the pointer.
+Touch: drag with one finger; pinch with two fingers.
+Buttons: +, minus, Reset view. Keyboard when map has focus: arrows, +/-, Home.
+Each question starts centered on its study-key capital/administrative center at the configured default zoom (8). Reset view returns there. Touch gestures inside the map move the map; swipe outside it to scroll the page.
+
+All 245 coordinates match the primary study-key names by country and GeoNames city/alternate-name records; Fakaofo uses its administrative-atoll record. Some territories have administrative centers rather than national capitals. This update follows the existing study key; it is not a new audit of capital designations.
+
+Verified: desktop wheel, drag, zoom buttons, reset, scoring and next-question map; automated two-touch pinch/one-finger drag handlers; viewport bounds at mobile/desktop dimensions; 245-coordinate completeness and embedded-data parity. Physical-phone touch behavior has not been tested here.
