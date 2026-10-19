@@ -11,7 +11,7 @@
     body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:radial-gradient(1200px 600px at 10% -10%,#1b2551 0%,#0b1020 40%),var(--bg);color:var(--ink)}
     a{color:var(--accent)}
     .wrap{max-width:1024px;margin:0 auto;padding:24px}
-    header{display:flex;gap:16px;align-items:center;justify-content:space-between;margin-bottom:16px}
+    header{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;margin-bottom:16px}
     .brand{display:flex;align-items:center;gap:12px}
     .logo{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 10px 30px rgba(125,211,252,.2)}
     h1{font-size:20px;margin:0;letter-spacing:.3px}
@@ -58,6 +58,7 @@
     <header>
       <div class="brand"><div class="logo" aria-hidden="true"></div><h1>World Capital Quiz</h1></div>
       <div style="display:flex; gap:8px; align-items:center">
+        <a href="./answer-key.html" style="font-size:14px;padding:8px;white-space:nowrap">Study answer key</a>
         <button id="startBtn">Start</button>
         <button id="resetBtn" class="btn-secondary">Reset</button>
       </div>
