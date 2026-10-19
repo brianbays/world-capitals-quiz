@@ -63,7 +63,7 @@
 <body>
   <div class="wrap">
     <header>
-      <div class="brand"><div class="logo" aria-hidden="true"></div><h1>World Capital Quiz</h1></div>
+      <div class="brand"><div class="logo" aria-hidden="true"></div><h1><select id="quizType" aria-label="Quiz type" style="font:inherit;font-weight:700;max-width:100%"><option value="capital">World Capital Quiz</option><option value="country">World Country Quiz</option></select></h1></div>
       <div style="display:flex; gap:8px; align-items:center">
         <a href="./answer-key.html" style="font-size:14px;padding:8px;white-space:nowrap">Study answer key</a>
         <button id="startBtn">Start</button>
@@ -156,7 +156,7 @@
           <h3 style="margin:4px 0 10px">Recent Results</h3>
           <div class="list" id="recent"></div>
           <footer>
-            Built with bundled country data from <a href="https://github.com/mledoze/countries">mledoze/countries</a> (ODbL). Case &amp; accent-insensitive matching. No tracking. Map pins show country locations. Map boundaries: Natural Earth (public domain), via <a href="https://github.com/datasets/geo-countries">geo-countries</a>.
+            Built with bundled country data from <a href="https://github.com/mledoze/countries">mledoze/countries</a> (ODbL). Case &amp; accent-insensitive matching. No tracking. Map pins show country or territory locations. In World Country Quiz, identify the place marked by the dark dot; the map stays visible. Map boundaries: Natural Earth (public domain), via <a href="https://github.com/datasets/geo-countries">geo-countries</a>.
           </footer>
         </div>
       </aside>
@@ -178,6 +178,7 @@
 
     let DATA=[], ALL_CAPITALS=[];
     let queue=[], current=null;
+    let transition=null, answered=false;
     let score=0, qIndex=0, streak=0, totalQ=0;
     let timerPerQ=0, tick=null, timeLeft=0, mode='easy';
 
@@ -259,34 +260,45 @@
       }
       function hideMap(){ els.mapEl.innerHTML=''; els.mapPanel.hidden=true; }
 
-      function updateMapState(){ const m=els.mapMode.value; if(els.mapState) els.mapState.textContent = m==='always'?'Map: Always':m==='reveal'?'Map: Reveal':'Map: Off'; }
+      function updateMapState(){ const m=countryQuiz()?'always':els.mapMode.value; if(els.mapState) els.mapState.textContent = m==='always'?'Map: Always':m==='reveal'?'Map: Reveal':'Map: Off'; }
 
+      const quizType=document.getElementById('quizType');
+      const countryQuiz=()=>quizType.value==='country';
+      const answersFor=item=>countryQuiz()?[item.country]:item.capitals;
+      const answerPool=()=>countryQuiz()?DATA.map(d=>d.country).sort((a,b)=>a.localeCompare(b)):ALL_CAPITALS;
+      quizType.addEventListener('change',()=>{
+        els.resetBtn.click();
+        document.title=countryQuiz()?'World Country Quiz':'World Capital Quiz';
+        els.mapMode.disabled=countryQuiz();
+        updateMapState();
+        els.input.placeholder=countryQuiz()?'Type the country or territory…':'Type the capital…';
+      });
       // ===== Game logic =====
       function setupQueue(){ const region=els.region.value; const pool=region==='All'?DATA:DATA.filter(d=>d.region===region); const want=els.count.value==='all'?pool.length:parseInt(els.count.value,10); queue=sample(pool,want); totalQ=queue.length; qIndex=0; score=0; streak=0; current=null; updateHUD(); els.summary.hidden=true; }
       function updateHUD(){ els.score.textContent=String(score); els.qnum.textContent=String(Math.min(qIndex,totalQ)); els.qtotal.textContent=String(totalQ); els.streak.textContent=String(streak); els.bar.style.width=(totalQ?(qIndex/totalQ)*100:0)+'%'; }
       function startTimer(){ clearInterval(tick); if(timerPerQ<=0){ els.timeChip.style.display='none'; return; } els.timeChip.style.display='inline-flex'; timeLeft=timerPerQ; els.timeLeft.textContent=String(timeLeft); tick=setInterval(()=>{ timeLeft--; els.timeLeft.textContent=String(timeLeft); if(timeLeft<=0){ clearInterval(tick); reveal(false,"Time's up!"); } },1000); }
 
-      function nextQuestion(){ els.feedback.textContent=''; els.hintBtn.classList.remove('hint'); if(qIndex>=totalQ){ finish(); return; } current=queue[qIndex]; qIndex++; updateHUD(); els.question.textContent=`What is the capital of ${current.country}?`; mode=els.mode.value; timerPerQ=parseInt(els.timer.value||'0',10)||0; startTimer(); els.easyUI.hidden = mode!=='easy'; els.typeUI.hidden = (mode==='easy'); if(els.mapMode.value==='always'){ showMap(current,false); } else { hideMap(); } if(mode==='easy'){ renderChoices(); } else { els.input.value=''; els.input.focus(); renderSuggestions(); } }
+      function nextQuestion(){ answered=false; els.feedback.textContent=''; els.hintBtn.classList.remove('hint'); if(qIndex>=totalQ){ finish(); return; } current=queue[qIndex]; qIndex++; updateHUD(); els.question.textContent=countryQuiz()?'What is the country?':`What is the capital of ${current.country}?`; mode=els.mode.value; timerPerQ=parseInt(els.timer.value||'0',10)||0; startTimer(); els.easyUI.hidden = mode!=='easy'; els.typeUI.hidden = (mode==='easy'); if(countryQuiz()||els.mapMode.value==='always'){ showMap(current,false); } else { hideMap(); } if(mode==='easy'){ renderChoices(); } else { els.input.value=''; els.input.focus(); renderSuggestions(); } }
 
       function renderChoices(){
         // Build a 4-option set: exactly 1 correct + 3 unique distractors (not any alias of current)
         const region=els.region.value;
         const same=(region==='All')?DATA:DATA.filter(d=>d.region===current.region);
-        const correctAliases = new Set(current.capitals.map(c=>norm(c)));
-        const correct = current.capitals[0]; // canonical display
+        const correctAliases = new Set(answersFor(current).map(c=>norm(c)));
+        const correct = answersFor(current)[0]; // canonical display
         // pool candidates then filter out aliases and dups by normalized value
-        const poolCaps = same.flatMap(d=>d.capitals);
+        const poolCaps = same.flatMap(answersFor);
         const distractPool = poolCaps.filter(c=>!correctAliases.has(norm(c)));
         const picked = new Set();
         const distractors=[];
         while(distractors.length<3 && distractPool.length){
-          const c = distractPool[Math.floor(Math.random()*distractPool.length)];
+          const c = distractPool.splice(Math.floor(Math.random()*distractPool.length),1)[0];
           const key = norm(c);
           if(!picked.has(key)) { picked.add(key); distractors.push(c); }
         }
         // If pool was small, backfill from ALL_CAPITALS
         if(distractors.length<3){
-          for(const c of ALL_CAPITALS){ const key=norm(c); if(!picked.has(key) && !correctAliases.has(key)){ distractors.push(c); picked.add(key); if(distractors.length===3) break; } }
+          for(const c of answerPool()){ const key=norm(c); if(!picked.has(key) && !correctAliases.has(key)){ distractors.push(c); picked.add(key); if(distractors.length===3) break; } }
         }
         // Final options
         const options=[correct, ...distractors.slice(0,3)];
@@ -300,12 +312,12 @@
         // --- Assertion: ensure at least one option is acceptable
         console.assert(shuffled.some(o=>correctAliases.has(norm(o))), 'MCQ must include a correct alias');
       }
-      function renderSuggestions(){ const box=els.suggestions; const val=norm(els.input.value); if(els.mode.value!=='medium'||!val){ box.hidden=true; box.innerHTML=''; return;} const list=ALL_CAPITALS.filter(c=>norm(c).startsWith(val)).slice(0,50); if(list.length===0){ box.hidden=true; box.innerHTML=''; return;} box.hidden=false; box.innerHTML=''; list.forEach(c=>{ const d=document.createElement('div'); d.textContent=c; d.addEventListener('click',()=>{ els.input.value=c; box.hidden=true;}); box.appendChild(d);}); }
-      function isCorrect(ans){ const a=norm(ans); return current.capitals.some(c=>norm(c)===a); }
-      function reveal(ok,msg){ clearInterval(tick); const correct=current.capitals[0]; if(ok){ score++; streak++; els.feedback.innerHTML=`<span style="color:var(--ok);font-weight:600">Correct!</span>`;} else { streak=0; els.feedback.innerHTML=`<span style="color:var(--danger);font-weight:600">Wrong.</span> Correct is <b>${correct}</b>. ${msg?`<span style='color:var(--muted)'>${msg}</span>`:''}`;} pushRecent(current.country,correct,ok); if(els.mapMode.value==='reveal'){ showMap(current,true);} setTimeout(()=>nextQuestion(),800); }
+      function renderSuggestions(){ const box=els.suggestions; const val=norm(els.input.value); if(els.mode.value!=='medium'||!val){ box.hidden=true; box.innerHTML=''; return;} const list=answerPool().filter(c=>norm(c).startsWith(val)).slice(0,50); if(list.length===0){ box.hidden=true; box.innerHTML=''; return;} box.hidden=false; box.innerHTML=''; list.forEach(c=>{ const d=document.createElement('div'); d.textContent=c; d.addEventListener('click',()=>{ els.input.value=c; box.hidden=true;}); box.appendChild(d);}); }
+      function isCorrect(ans){ const a=norm(ans); return answersFor(current).some(c=>norm(c)===a); }
+      function reveal(ok,msg){ if(answered||!current) return; answered=true; clearInterval(tick); const correct=answersFor(current)[0]; if(ok){ score++; streak++; els.feedback.innerHTML=`<span style="color:var(--ok);font-weight:600">Correct!</span>`;} else { streak=0; els.feedback.innerHTML=`<span style="color:var(--danger);font-weight:600">Wrong.</span> Correct is <b>${correct}</b>. ${msg?`<span style='color:var(--muted)'>${msg}</span>`:''}`;} pushRecent(current.country,countryQuiz()?'Country identification':correct,ok); if(els.mapMode.value==='reveal'){ showMap(current,true);} transition=setTimeout(()=>nextQuestion(),800); }
       function pushRecent(country,capital,ok){ const row=document.createElement('div'); row.className='row'; row.innerHTML=`<div><b>${country}</b><br><small>${capital}</small></div><div style="display:flex;align-items:center;gap:8px"><span class="chip" style="color:${ok?'#34d399':'#fb7185'}">${ok?'✓':'✕'}</span></div>`; els.recent.prepend(row); while(els.recent.children.length>20){ els.recent.lastChild.remove(); } }
-      function finish(){ clearInterval(tick); els.easyUI.hidden=true; els.typeUI.hidden=true; els.question.textContent='Great job!'; const pct=totalQ?Math.round((score/totalQ)*100):0; els.summary.hidden=false; els.summary.innerHTML=`<div class="panel" style="margin-top:8px"><h2 style="margin:6px 0 8px">Summary</h2><p>You answered <b>${score}</b> out of <b>${totalQ}</b> correctly (<b>${pct}%</b>).</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button id="playAgainBtn">Play Again</button><button class="btn-secondary" id="shareScoreBtn">Share</button></div></div>`; document.getElementById('playAgainBtn').addEventListener('click',startGame); document.getElementById('shareScoreBtn').addEventListener('click',()=>shareScore(score,totalQ)); }
-      function shareScore(s,t){ const text=`I scored ${s}/${t} on the World Capital Quiz! Can you beat me?`; if(navigator.share){ navigator.share({text}); } else { navigator.clipboard.writeText(text); alert('Copied to clipboard!'); } }
+      function finish(){ current=null; clearInterval(tick); els.easyUI.hidden=true; els.typeUI.hidden=true; els.question.textContent='Great job!'; const pct=totalQ?Math.round((score/totalQ)*100):0; els.summary.hidden=false; els.summary.innerHTML=`<div class="panel" style="margin-top:8px"><h2 style="margin:6px 0 8px">Summary</h2><p>You answered <b>${score}</b> out of <b>${totalQ}</b> correctly (<b>${pct}%</b>).</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button id="playAgainBtn">Play Again</button><button class="btn-secondary" id="shareScoreBtn">Share</button></div></div>`; document.getElementById('playAgainBtn').addEventListener('click',startGame); document.getElementById('shareScoreBtn').addEventListener('click',()=>shareScore(score,totalQ)); }
+      function shareScore(s,t){ const text=`I scored ${s}/${t} on the ${countryQuiz()?'World Country Quiz':'World Capital Quiz'}! Can you beat me?`; if(navigator.share){ navigator.share({text}); } else { navigator.clipboard.writeText(text); alert('Copied to clipboard!'); } }
 
       // ===== Events =====
       els.mode.addEventListener('change',()=>{
@@ -340,13 +352,14 @@
       els.input.addEventListener('input',()=>{ if(els.mode.value==='medium') renderSuggestions(); else els.suggestions.hidden=true; });
       els.input.addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ submitAnswer(); } });
       els.submitBtn.addEventListener('click',submitAnswer);
-      els.hintBtn.addEventListener('click',()=>{ const letter=current?.capitals?.[0]?.charAt(0)||''; els.feedback.innerHTML=`<span class="hint">Hint:</span> starts with <b>${letter}</b>`; els.hintBtn.classList.add('hint'); if(els.mapMode.value!=='off'){ showMap(current,true);} });
+      els.hintBtn.addEventListener('click',()=>{ if(!current) return; const letter=answersFor(current)[0].charAt(0); els.feedback.innerHTML=`<span class="hint">Hint:</span> starts with <b>${letter}</b>`; els.hintBtn.classList.add('hint'); if(els.mapMode.value!=='off'){ showMap(current,true);} });
       document.addEventListener('click',(e)=>{ if(!els.suggestions.contains(e.target)&&e.target!==els.input){ els.suggestions.hidden=true; } });
 
       function submitAnswer(){ if(!current) return; const val=els.input.value.trim(); if(!val){ els.feedback.innerHTML=`<span style=\"color:var(--warn)\">Type an answer.</span>`; return;} const ok=isCorrect(val); reveal(ok); }
-      function startGame(){ if(!DATA.length){ els.question.textContent='Country data is unavailable. Please reload the page.'; return; } setupQueue(); nextQuestion(); }
+      function startGame(){ clearTimeout(transition); clearInterval(tick); answered=false; if(!DATA.length){ els.question.textContent='Country data is unavailable. Please reload the page.'; return; } setupQueue(); nextQuestion(); }
       els.startBtn.addEventListener('click',startGame);
       els.resetBtn.addEventListener('click',()=>{
+        clearTimeout(transition); answered=false;
         // Soft reset: avoid full reload (prevents white screen in preview iframes)
         try{ localStorage.removeItem('wg_caps_v1'); }catch{}
         clearInterval(tick);
