@@ -1,0 +1,7 @@
+Upload index.html (replace existing) and MAP-LICENSE.txt to your GitHub world-capitals-quiz folder. Keep the existing countries.json and DATA-LICENSE.txt files.
+
+The colorful vector map and quiz data are embedded in index.html. No API key, map tiles, map CDN, or build step is required. The marker shows the country's approximate location, not its capital. Use Map Zoom to adjust the view; Map Reveal settings are retained.
+
+Map source: Natural Earth via https://github.com/datasets/geo-countries (public domain). Geometry simplified for display. This is an independently styled map, not artwork copied from World Geography Games.
+
+Verified locally: map rendering, zoom, correct-answer scoring, advancing questions, and no JavaScript errors at start.
